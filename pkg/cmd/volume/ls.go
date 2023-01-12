@@ -45,13 +45,13 @@ type volumePrintable struct {
 
 func Ls(options *types.VolumeLsCommandOptions, stdout io.Writer) error {
 	lsSanitizeInput(options)
-	vols, err := LsGetData(&LsGetDataOptions{
-		Namespace: options.GOptions.Namespace,
-		DataRoot:  options.GOptions.DataRoot,
-		Address:   options.GOptions.Address,
-		Size:      options.Size,
-		Filters:   options.Filters,
-	})
+	vols, err := List(
+		options.GOptions.Namespace,
+		options.GOptions.DataRoot,
+		options.GOptions.Address,
+		options.Size,
+		options.Filters,
+	)
 	if err != nil {
 		return err
 	}
@@ -93,25 +93,15 @@ func removeSizeFilters(filters []string) []string {
 	return res
 }
 
-// LsGetDataOptions is created so that the caller of LsGetData
-// do not need to depend on irrelevant things in VolumeLsCommandOptions (e.g., Format).
-type LsGetDataOptions struct {
-	Namespace string
-	DataRoot  string
-	Address   string
-	Size      bool
-	Filters   []string
-}
-
-// LsGetData contains the main logic and can be used by projects other than CLIs.
+// List contains the main logic and can be used by projects other than CLIs.
 // If improvements are added (e.g., filtering by dangling=true, driver=local, etc.),
 // other projects can also benefit from this.
-func LsGetData(options *LsGetDataOptions) (map[string]native.Volume, error) {
-	labelFilterFuncs, nameFilterFuncs, sizeFilterFuncs, isFilter, err := getVolumeFilterFuncs(options.Filters)
+func List(namespace, dataRoot, address string, size bool, filters []string) (map[string]native.Volume, error) {
+	labelFilterFuncs, nameFilterFuncs, sizeFilterFuncs, isFilter, err := getVolumeFilterFuncs(filters)
 	if err != nil {
 		return nil, err
 	}
-	vols, err := Volumes(options.Namespace, options.DataRoot, options.Address, options.Size)
+	vols, err := Volumes(namespace, dataRoot, address, size)
 	if err != nil {
 		return nil, err
 	}
