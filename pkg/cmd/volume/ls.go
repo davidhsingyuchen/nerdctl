@@ -57,6 +57,7 @@ func Ls(options *types.VolumeLsCommandOptions, stdout io.Writer) error {
 		logrus.Warn("should use --filter=size and --size together")
 		options.Size = true
 	}
+
 	vols, err := List(
 		options.GOptions.Namespace,
 		options.GOptions.DataRoot,
