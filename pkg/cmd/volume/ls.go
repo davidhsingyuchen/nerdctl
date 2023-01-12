@@ -44,21 +44,6 @@ type volumePrintable struct {
 }
 
 func Ls(options *types.VolumeLsCommandOptions, stdout io.Writer) error {
-	lsSanitizeInput(options)
-	vols, err := List(
-		options.GOptions.Namespace,
-		options.GOptions.DataRoot,
-		options.GOptions.Address,
-		options.Size,
-		options.Filters,
-	)
-	if err != nil {
-		return err
-	}
-	return lsPrintOutput(options, stdout, vols)
-}
-
-func lsSanitizeInput(options *types.VolumeLsCommandOptions) {
 	if options.Quiet && options.Size {
 		logrus.Warn("cannot use --size and --quiet together, ignoring --size")
 		options.Size = false
@@ -72,6 +57,17 @@ func lsSanitizeInput(options *types.VolumeLsCommandOptions) {
 		logrus.Warn("should use --filter=size and --size together")
 		options.Size = true
 	}
+	vols, err := List(
+		options.GOptions.Namespace,
+		options.GOptions.DataRoot,
+		options.GOptions.Address,
+		options.Size,
+		options.Filters,
+	)
+	if err != nil {
+		return err
+	}
+	return lsPrintOutput(options, stdout, vols)
 }
 
 func hasSizeFilter(filters []string) bool {
