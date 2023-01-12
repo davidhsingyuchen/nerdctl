@@ -89,26 +89,6 @@ func removeSizeFilters(filters []string) []string {
 	return res
 }
 
-// List contains the main logic and can be used by projects other than CLIs.
-// If improvements are added (e.g., filtering by dangling=true, driver=local, etc.),
-// other projects can also benefit from this.
-func List(namespace, dataRoot, address string, size bool, filters []string) (map[string]native.Volume, error) {
-	labelFilterFuncs, nameFilterFuncs, sizeFilterFuncs, isFilter, err := getVolumeFilterFuncs(filters)
-	if err != nil {
-		return nil, err
-	}
-	vols, err := Volumes(namespace, dataRoot, address, size)
-	if err != nil {
-		return nil, err
-	}
-	for k, v := range vols {
-		if isFilter && !volumeMatchesFilter(v, labelFilterFuncs, nameFilterFuncs, sizeFilterFuncs) {
-			delete(vols, k)
-		}
-	}
-	return vols, nil
-}
-
 func lsPrintOutput(options *types.VolumeLsCommandOptions, stdout io.Writer, vols map[string]native.Volume) error {
 	w := stdout
 	var tmpl *template.Template
@@ -169,6 +149,26 @@ func lsPrintOutput(options *types.VolumeLsCommandOptions, stdout io.Writer, vols
 		return f.Flush()
 	}
 	return nil
+}
+
+// List contains the main logic and can be used by projects other than CLIs.
+// If improvements are added (e.g., filtering by dangling=true, driver=local, etc.),
+// other projects can also benefit from this.
+func List(namespace, dataRoot, address string, size bool, filters []string) (map[string]native.Volume, error) {
+	labelFilterFuncs, nameFilterFuncs, sizeFilterFuncs, isFilter, err := getVolumeFilterFuncs(filters)
+	if err != nil {
+		return nil, err
+	}
+	vols, err := Volumes(namespace, dataRoot, address, size)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range vols {
+		if isFilter && !volumeMatchesFilter(v, labelFilterFuncs, nameFilterFuncs, sizeFilterFuncs) {
+			delete(vols, k)
+		}
+	}
+	return vols, nil
 }
 
 func Volumes(ns string, dataRoot string, address string, volumeSize bool) (map[string]native.Volume, error) {
