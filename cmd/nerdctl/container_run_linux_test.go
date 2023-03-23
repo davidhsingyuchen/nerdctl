@@ -322,3 +322,20 @@ func TestRunWithOOMScoreAdj(t *testing.T) {
 
 	base.Cmd("run", "--rm", "--oom-score-adj", score, testutil.AlpineImage, "cat", "/proc/self/oom_score_adj").AssertOutContains(score)
 }
+
+func TestRunWithDetachKeys(t *testing.T) {
+	t.Parallel()
+
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+	opts := []func(*testutil.Cmd){
+		testutil.WithStdin(bytes.NewReader([]byte{17, 16})), // https://www.physics.udel.edu/~watson/scen103/ascii.html
+	}
+	defer base.Cmd("container", "rm", "-f", containerName).AssertOK()
+	// unbuffer(1) emulates tty, which is required by `nerdctl run -t`.
+	// unbuffer(1) can be installed with `apt-get install expect`.
+	base.CmdWithHelper([]string{"unbuffer"}, "run", "-it", "--detach-keys=ctrl-q,ctrl-p", "--name", containerName, testutil.CommonImage).
+		CmdOption(opts...).AssertErrContains("read detach keys")
+	container := base.InspectContainer(containerName)
+	assert.Equal(base.T, container.State.Running, true)
+}

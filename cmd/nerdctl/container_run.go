@@ -117,6 +117,7 @@ func setCreateFlags(cmd *cobra.Command) {
 	})
 	cmd.Flags().String("stop-signal", "SIGTERM", "Signal to stop a container")
 	cmd.Flags().Int("stop-timeout", 0, "Timeout (in seconds) to stop a container")
+	cmd.Flags().String("detach-keys", consoleutil.DefaultDetachKeys, "Override the default detach keys")
 
 	// #region for init process
 	cmd.Flags().Bool("init", false, "Run an init process inside the container, Default to use tini")
@@ -379,30 +380,19 @@ func runAction(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 
+	detachKeys, err := cmd.Flags().GetString("detach-keys")
+	if err != nil {
+		return err
+	}
 	lab, err := c.Labels(ctx)
 	if err != nil {
 		return err
 	}
 	logURI := lab[labels.LogURI]
-	task, err := taskutil.NewTask(ctx, client, c, false, flagI, flagT, flagD, con, logURI)
+	task, err := taskutil.NewTask(ctx, client, c, false, flagI, flagT, flagD, con, logURI, detachKeys)
 	if err != nil {
 		return err
 	}
-	var statusC <-chan containerd.ExitStatus
-	if !flagD {
-		defer func() {
-			if rm {
-				if _, taskDeleteErr := task.Delete(ctx); taskDeleteErr != nil {
-					logrus.Error(taskDeleteErr)
-				}
-			}
-		}()
-		statusC, err = task.Wait(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
 	if err := task.Start(ctx); err != nil {
 		return err
 	}
@@ -419,13 +409,39 @@ func runAction(cmd *cobra.Command, args []string) (err error) {
 		sigc := signalutil.ForwardAllSignals(ctx, task)
 		defer signalutil.StopCatch(sigc)
 	}
-	status := <-statusC
-	code, _, err := status.Result()
+
+	statusC, err := task.Wait(ctx)
 	if err != nil {
 		return err
 	}
-	if code != 0 {
-		return errutil.NewExitCoderErr(int(code))
+	io := task.IO()
+	if io == nil {
+		return errors.New("got a nil IO from the task")
+	}
+	ioC := make(chan struct{})
+	go func() {
+		logrus.Debug("waiting for IO")
+		io.Wait()
+		ioC <- struct{}{}
+		logrus.Debug("IO done")
+	}()
+	select {
+	case status := <-statusC:
+		// Only remove the container if it exits (i.e. don't remove it if the user just detaches from it).
+		if rm {
+			if _, taskDeleteErr := task.Delete(ctx); taskDeleteErr != nil {
+				logrus.Error(taskDeleteErr)
+			}
+		}
+		code, _, err := status.Result()
+		if err != nil {
+			return err
+		}
+		if code != 0 {
+			return errutil.NewExitCoderErr(int(code))
+		}
+	case <-ioC:
+		return nil
 	}
 	return nil
 }

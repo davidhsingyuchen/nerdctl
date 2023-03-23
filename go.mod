@@ -2,6 +2,8 @@ module github.com/containerd/nerdctl
 
 go 1.19
 
+replace github.com/containerd/containerd => github.com/davidhsingyuchen/containerd v0.0.0-20230331013921-82ec62b86582
+
 require (
 	github.com/Masterminds/semver/v3 v3.2.0
 	github.com/Microsoft/go-winio v0.6.0
@@ -32,10 +34,12 @@ require (
 	github.com/fluent/fluent-logger-golang v1.9.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/ipfs/go-cid v0.4.0
+	github.com/klauspost/compress v1.16.3
 	github.com/mattn/go-isatty v0.0.18
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/moby/sys/mount v0.3.3
 	github.com/moby/sys/signal v0.7.0
+	github.com/moby/term v0.0.0-20221205130635-1aeaba878587
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0-rc2.0.20221005185240-3a7f492d3f1b
 	github.com/opencontainers/runtime-spec v1.1.0-rc.1
@@ -62,6 +66,8 @@ require (
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1 // indirect
 	github.com/AdamKorcz/go-118-fuzz-build v0.0.0-20221215162035-5330a85ea652 // indirect
+	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
+	github.com/bmizerany/assert v0.0.0-20160611221934-b7ed37b82869 // indirect
 	github.com/cilium/ebpf v0.9.1 // indirect
 	github.com/containerd/cgroups/v3 v3.0.1 // indirect
 	github.com/containerd/fifo v1.1.0 // indirect
@@ -84,7 +90,6 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/imdario/mergo v0.3.14 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
-	github.com/klauspost/compress v1.16.3
 	github.com/klauspost/cpuid/v2 v2.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-shellwords v1.0.12 // indirect
