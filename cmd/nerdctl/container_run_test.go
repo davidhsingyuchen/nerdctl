@@ -17,6 +17,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -466,4 +467,19 @@ func TestRunWithTtyAndDetached(t *testing.T) {
 	base.Cmd("logs", withTtyContainerName).AssertCombinedOutContains("speed 38400 baud; line = 0;")
 	withTtyContainer := base.InspectContainer(withTtyContainerName)
 	assert.Equal(base.T, 0, withTtyContainer.State.ExitCode)
+}
+
+func TestRunWithDetachKeys(t *testing.T) {
+	t.Parallel()
+
+	base := testutil.NewBase(t)
+	containerName := testutil.Identifier(t)
+	opts := []func(*testutil.Cmd){
+		testutil.WithStdin(bytes.NewReader([]byte{17, 16})), // https://www.physics.udel.edu/~watson/scen103/ascii.html
+	}
+	defer base.Cmd("container", "rm", "-f", containerName).AssertOK()
+	base.Cmd("run", "-it", "--detach-keys=ctrl-q,ctrl-p", "--name", containerName, testutil.CommonImage).
+		CmdOption(opts...).AssertErrContains("read detach keys")
+	container := base.InspectContainer(containerName)
+	assert.Equal(base.T, container.State.Running, true)
 }
