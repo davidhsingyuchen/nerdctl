@@ -410,38 +410,29 @@ func runAction(cmd *cobra.Command, args []string) (err error) {
 		defer signalutil.StopCatch(sigc)
 	}
 
-	statusC, err := task.Wait(ctx)
-	if err != nil {
-		return err
-	}
 	io := task.IO()
 	if io == nil {
 		return errors.New("got a nil IO from the task")
 	}
-	ioC := make(chan struct{})
-	go func() {
-		logrus.Debug("waiting for IO")
-		io.Wait()
-		ioC <- struct{}{}
-		logrus.Debug("IO done")
-	}()
-	select {
-	case status := <-statusC:
-		// Only remove the container if it exits (i.e. don't remove it if the user just detaches from it).
-		if rm {
-			if _, taskDeleteErr := task.Delete(ctx); taskDeleteErr != nil {
-				logrus.Error(taskDeleteErr)
-			}
-		}
-		code, _, err := status.Result()
-		if err != nil {
-			return err
-		}
-		if code != 0 {
-			return errutil.NewExitCoderErr(int(code))
-		}
-	case <-ioC:
+	io.Wait()
+	// There are two possibilities if the control flow reaches here:
+	// - The user detaches from the container.
+	// - The container exits.
+	status, err := task.Status(ctx)
+	if err != nil {
+		return err
+	}
+	if status.Status == containerd.Running { // detach case
 		return nil
+	}
+
+	if rm {
+		if _, taskDeleteErr := task.Delete(ctx); taskDeleteErr != nil {
+			logrus.Error(taskDeleteErr)
+		}
+	}
+	if status.ExitStatus != 0 {
+		return errutil.NewExitCoderErr(int(status.ExitStatus))
 	}
 	return nil
 }

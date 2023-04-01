@@ -60,6 +60,7 @@ require (
 	golang.org/x/term v0.6.0
 	golang.org/x/text v0.8.0
 	gopkg.in/yaml.v3 v3.0.1
+	gotest.tools v2.2.0+incompatible
 	gotest.tools/v3 v3.4.0
 )
 
