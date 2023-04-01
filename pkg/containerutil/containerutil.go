@@ -18,6 +18,7 @@ package containerutil
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"path"
@@ -198,7 +199,7 @@ func GenerateSharingPIDOpts(ctx context.Context, targetCon containerd.Container)
 }
 
 // Start starts `container` with `attach` flag. If `attach` is true, it will attach to the container's stdio.
-func Start(ctx context.Context, container containerd.Container, flagA bool, client *containerd.Client) (err error) {
+func Start(ctx context.Context, container containerd.Container, flagA bool, client *containerd.Client, detachKeys string) (err error) {
 	// defer the storage of start error in the dedicated label
 	defer func() {
 		if err != nil {
@@ -247,23 +248,14 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 			logrus.WithError(err).Debug("failed to delete old task")
 		}
 	}
-	task, err := taskutil.NewTask(ctx, client, container, flagA, false, flagT, true, con, logURI)
+	task, err := taskutil.NewTask(ctx, client, container, flagA, false, flagT, true, con, logURI, detachKeys)
 	if err != nil {
 		return err
-	}
-
-	var statusC <-chan containerd.ExitStatus
-	if flagA {
-		statusC, err = task.Wait(ctx)
-		if err != nil {
-			return err
-		}
 	}
 
 	if err := task.Start(ctx); err != nil {
 		return err
 	}
-
 	if !flagA {
 		return nil
 	}
@@ -272,16 +264,27 @@ func Start(ctx context.Context, container containerd.Container, flagA bool, clie
 			logrus.WithError(err).Error("console resize")
 		}
 	}
-
 	sigc := signalutil.ForwardAllSignals(ctx, task)
 	defer signalutil.StopCatch(sigc)
-	status := <-statusC
-	code, _, err := status.Result()
+
+	io := task.IO()
+	if io == nil {
+		return errors.New("got a nil IO from the task")
+	}
+	io.Wait()
+	// There are two possibilities if the control flow reaches here:
+	// - The user detaches from the container.
+	// - The container exits.
+	status, err := task.Status(ctx)
 	if err != nil {
 		return err
 	}
-	if code != 0 {
-		return errutil.NewExitCoderErr(int(code))
+	if status.Status == containerd.Running { // detach case
+		return nil
+	}
+
+	if status.ExitStatus != 0 {
+		return errutil.NewExitCoderErr(int(status.ExitStatus))
 	}
 	return nil
 }

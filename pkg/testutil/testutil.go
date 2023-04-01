@@ -379,6 +379,14 @@ func (c *Cmd) AssertOutContains(s string) {
 	c.Assert(expected)
 }
 
+func (c *Cmd) AssertErrContains(s string) {
+	c.Base.T.Helper()
+	expected := icmd.Expected{
+		Err: s,
+	}
+	c.Assert(expected)
+}
+
 func (c *Cmd) AssertCombinedOutContains(s string) {
 	c.Base.T.Helper()
 	res := c.Run()
